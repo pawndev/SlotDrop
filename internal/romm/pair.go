@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -72,7 +73,7 @@ func (c *Client) StartPairing(deviceID, name string) (*Pairing, error) {
 		"client_device_identifier": deviceID,
 		"name":                     name,
 		"client":                   "SlotDrop",
-		"platform":                 "Windows",
+		"platform":                 osName(),
 		"requested_scopes":         PairingScopes,
 	})
 	if err != nil {
@@ -171,4 +172,15 @@ func (c *Client) WaitForPairing(ctx context.Context, p *Pairing) (string, error)
 			return "", errorf("RomM returned HTTP %d while waiting for the pairing.", status)
 		}
 	}
+}
+
+// osName is how RomM's device list names this computer's system.
+func osName() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "macOS"
+	case "windows":
+		return "Windows"
+	}
+	return runtime.GOOS
 }

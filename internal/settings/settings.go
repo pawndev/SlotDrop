@@ -1,5 +1,6 @@
 // Package settings remembers a few things between runs, in
-// %APPDATA%\SlotDrop\settings.json. The RomM password or token is only
+// %APPDATA%\SlotDrop\settings.json (on macOS, ~/Library/Application
+// Support/SlotDrop/settings.json). The RomM password or token is only
 // stored encrypted (see package secret), never as plain text.
 package settings
 
@@ -13,7 +14,8 @@ type Settings struct {
 	RommURL  string `json:"romm_url"`
 	Username string `json:"username"`
 	UseToken bool   `json:"use_token"`
-	// Login is the password or token, encrypted with Windows DPAPI.
+	// Login is the password or token, encrypted with Windows DPAPI or a
+	// key kept in the macOS Keychain.
 	Login  []byte `json:"login_protected,omitempty"`
 	SDCard string `json:"sd_card"`
 	// DeviceID names this PC to RomM when signing in with a phone, so

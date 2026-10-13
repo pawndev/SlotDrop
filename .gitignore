@@ -34,3 +34,6 @@ settings.json
 # Machine test tools
 node_modules/
 /smoke-out/
+
+# macOS build output
+/SlotDrop.app/

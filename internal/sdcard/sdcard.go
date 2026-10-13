@@ -68,7 +68,7 @@ func IsSlotCard(root string) bool { return LooksLikeSlot(root) && HasSlotBinary(
 
 // SafeToPickAutomatically reports whether SlotDrop may open root without
 // being asked: Slot is on it, it's a removable drive, and it isn't the
-// drive Windows runs from. Size is no guide, since 512 GB SD cards exist.
+// drive the computer runs from. Size is no guide, since 512 GB SD cards exist.
 func SafeToPickAutomatically(root string) bool {
 	return IsSlotCard(root) && IsRemovable(root) && !IsSystemDrive(root)
 }

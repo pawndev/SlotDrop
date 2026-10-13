@@ -7,10 +7,12 @@ package main
 import (
 	"embed"
 	"log"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
@@ -25,7 +27,9 @@ func main() {
 		Height:    780,
 		MinWidth:  860,
 		MinHeight: 560,
-		Frameless: true,
+		// The page draws its own title bar. On macOS the window keeps its
+		// own close/minimise/zoom buttons, over the page's title bar.
+		Frameless: runtime.GOOS != "darwin",
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
 			Handler: app.imageHandler(),
@@ -38,6 +42,10 @@ func main() {
 			DisableWindowIcon:    false,
 			WebviewUserDataPath:  "", // default: %APPDATA%\<exe name>
 			WebviewGpuIsDisabled: false,
+		},
+		Mac: &mac.Options{
+			TitleBar:   mac.TitleBarHidden(),
+			Appearance: mac.NSAppearanceNameDarkAqua,
 		},
 	})
 	if err != nil {
