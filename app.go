@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -94,7 +95,8 @@ func (a *App) Start() Start {
 		st.Card, _ = a.core.Card()
 	} else if s.SDCard != "" && sdcard.SafeToPickAutomatically(s.SDCard) {
 		// Last time's card, but only if it's still a Slot card: with the
-		// card out, Windows can hand its letter to another drive.
+		// card out, Windows can hand its letter to another drive (and macOS
+		// its /Volumes name).
 		if info, err := a.core.OpenCard(s.SDCard); err == nil {
 			st.Card = info
 		}
@@ -131,9 +133,9 @@ func (a *App) BrowseForCard() (string, error) {
 func (a *App) CardWarning(path string) string {
 	switch {
 	case sdcard.IsSystemDrive(path):
-		return "This is the drive Windows runs from, not an SD card. Only use it if you really keep a copy of your card here."
+		return "This is the drive your computer runs from, not an SD card. Only use it if you really keep a copy of your card here."
 	case !sdcard.HasSlotBinary(path):
-		return "Slot isn't installed here (there's no System\\slot), so this doesn't look like your Slot card."
+		return "Slot isn't installed here (there's no " + filepath.Join("System", "slot") + "), so this doesn't look like your Slot card."
 	case !sdcard.IsRemovable(path):
 		return "This isn't a removable drive, so it's probably not your SD card."
 	}

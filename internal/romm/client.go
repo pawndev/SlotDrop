@@ -5,8 +5,9 @@
 //     own host. Go's HTTP client also drops it if RomM redirects elsewhere.
 //   - Error messages never include query strings, because ScreenScraper image
 //     addresses can carry the RomM server's ScreenScraper login.
-//   - On Windows, HTTPS certificates are checked with the Windows certificate
-//     store, the same as your browser.
+//   - HTTPS certificates are checked with the system's own certificates (the
+//     Windows certificate store, or the macOS Keychain), the same as your
+//     browser.
 package romm
 
 import (

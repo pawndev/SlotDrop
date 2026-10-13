@@ -1,0 +1,36 @@
+# Runs the tests on macOS and builds SlotDrop.app (Apple Silicon and Intel),
+# keeping it with the run.
+name: macOS build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test and build SlotDrop.app
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go test ./...
+      - name: Build the app
+        run: ./build.sh
+      - name: Zip the app
+        run: ditto -c -k --keepParent SlotDrop.app SlotDrop-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SlotDrop-macOS
+          path: SlotDrop-macOS.zip

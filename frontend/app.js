@@ -6,6 +6,9 @@
 
 const api = () => window.go.main.App;
 const rt = () => window.runtime;
+// On a Mac the window keeps its own close/minimise/zoom buttons.
+const MAC = navigator.platform.startsWith("Mac");
+const COMPUTER = MAC ? "Mac" : "PC";
 
 // ---- tiny DOM helpers -------------------------------------------------------
 
@@ -95,6 +98,7 @@ let queue = Promise.resolve();
 // ---- start --------------------------------------------------------------------
 
 async function boot() {
+  document.body.classList.toggle("mac", MAC);
   document.getElementById("win-min").onclick = () => rt().WindowMinimise();
   document.getElementById("win-max").onclick = () => rt().WindowToggleMaximise();
   document.getElementById("win-close").onclick = () => rt().Quit();
@@ -164,7 +168,7 @@ function setupScreen() {
     cardBody = h("div", {},
       !anySlot && h("div", { class: "noslot" }, icon("sd"), h("div", {},
         h("b", {}, "No Slot card found"),
-        h("small", {}, "Put your SD card with Slot on it in the PC, then press Refresh."))),
+        h("small", {}, `Put your SD card with Slot on it in the ${COMPUTER}, then press Refresh.`))),
       drives.length ? h("div", { class: "drives" }, drives.map((d) =>
         h("button", { class: "drive" + (d.isSlot && d.removable ? " slot" : ""), onclick: () => chooseCard(d.path) },
           icon("sd"),
@@ -285,8 +289,10 @@ function setupScreen() {
       userField,
       secretField,
       phoneNote,
-      h("label", { class: "check" }, remember, "Remember me on this PC"),
-      h("div", { class: "note" }, icon("lock"), "Saved encrypted with Windows' own protection. Only your Windows account on this PC can unlock it."),
+      h("label", { class: "check" }, remember, `Remember me on this ${COMPUTER}`),
+      h("div", { class: "note" }, icon("lock"), MAC
+        ? "Saved encrypted with a key kept in your Keychain. Only your account on this Mac can unlock it."
+        : "Saved encrypted with Windows' own protection. Only your Windows account on this PC can unlock it."),
       err, go);
     step2Body = h("div", {}, formEl, pairBox);
   }

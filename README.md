@@ -4,7 +4,7 @@
 
 SlotDrop puts games from your [RomM](https://github.com/rommapp/romm) library
 onto a [Slot](https://slot-cfw.fyi) SD card, each with its cartridge label and
-shell colour. One `SlotDrop.exe`, nothing to install.
+shell colour. One `SlotDrop.exe` (or `SlotDrop.app` on a Mac), nothing to install.
 
 > [!IMPORTANT]
 > **Please read this first.**
@@ -50,7 +50,8 @@ shell colour. One `SlotDrop.exe`, nothing to install.
 
 ## Prerequisites
 
-- Windows 10 or 11 (the window uses WebView2, which both already have).
+- Windows 10 or 11 (the window uses WebView2, which both already have), or
+  macOS 13 Ventura or newer, on Apple Silicon or Intel.
 - A RomM server you can sign in to, with a password, an API token, or your
   phone (RomM 5.3 or newer).
   An API token only needs **platforms.read** and **roms.read** (SlotDrop only
@@ -66,6 +67,13 @@ shell colour. One `SlotDrop.exe`, nothing to install.
    `SlotDrop.exe`. The app isn't code-signed, so Windows SmartScreen will
    probably say *Windows protected your PC*: click **More info**, then
    **Run anyway**. Each release lists its SHA-256 and a VirusTotal scan.
+
+   On a Mac, take the macOS zip instead, unzip it and open `SlotDrop.app` (you can drag it into
+   *Applications* first). The app isn't signed with an Apple Developer ID,
+   so the first time macOS will say it can't check it: open
+   *System Settings → Privacy & Security*, scroll down and click
+   **Open Anyway** next to SlotDrop. When macOS asks whether SlotDrop may
+   access files on a removable volume, click **Allow**: that's your SD card.
 2. If your Slot card is plugged in it's picked up automatically. Otherwise
    click it in the list, or use *Choose folder…*.
 3. Sign in to RomM with your password or an API token, or pick *Phone (QR)*,
@@ -95,6 +103,12 @@ go build -trimpath -tags desktop,production -ldflags "-H windowsgui -s -w" -o Sl
 
 From Linux or macOS, put `GOOS=windows GOARCH=amd64` in front.
 
+To build the Mac app you also need Apple's command line tools
+(`xcode-select --install`). Then run `./build.sh`: it makes `SlotDrop.app`,
+which runs on both Apple Silicon and Intel Macs. To share it, zip it with
+`ditto -c -k --keepParent SlotDrop.app SlotDrop-macOS.zip`, so the zip keeps
+the app's signature.
+
 Run the tests with `go test ./...`.
 
 The app icon and Windows manifest live in `build/winres` and are compiled into
@@ -107,14 +121,20 @@ The app icon and Windows manifest live in `build/winres` and are compiled into
   only encrypted with Windows DPAPI, so only your Windows account on that PC
   can unlock it. It lives in `%APPDATA%\SlotDrop\settings.json`. *Sign out* in
   the RomM menu forgets it.
+- On a Mac it's encrypted (AES-256-GCM) with a random key kept in your login
+  Keychain, as *SlotDrop saved login key*, so only your account on that Mac
+  can unlock it. It lives in
+  `~/Library/Application Support/SlotDrop/settings.json`. After you update
+  SlotDrop, macOS may ask once whether it may use that key: click
+  **Always Allow**.
 - Your login is only ever sent to your RomM server and never written to a log.
 - Signing in with your phone gets a token with only the two read permissions
   SlotDrop needs. The QR code only ever points at your own RomM address, and
   you can remove SlotDrop from RomM's device list at any time.
   If your server address is HTTPS, the login is never sent over plain HTTP,
   even after a redirect. Using an `http://` address shows a warning.
-- HTTPS certificates are checked against the Windows certificate store, like
-  your browser.
+- HTTPS certificates are checked against the Windows certificate store (on a
+  Mac, the Keychain), like your browser.
 - Game and file names from RomM are shown as plain text, never run as code.
   The page has a strict Content Security Policy and loads nothing from the web.
 - Downloads have size limits, zips are read in memory, file names are cleaned
@@ -137,6 +157,7 @@ and I'll get in touch.
 | `internal/core` | ties it together: adding games, making labels |
 | `internal/secret`, `internal/settings` | the encrypted saved login |
 | `build/winres`, `rsrc_windows_amd64.syso` | the app icon and Windows manifest |
+| `build.sh`, `build/darwin` | builds the Mac app, and its Info.plist |
 | `preview.go` | development only: runs the page in a browser with a fake RomM (`go run -tags preview . <card folder>`) |
 
 ## Licence
