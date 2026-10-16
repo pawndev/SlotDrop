@@ -47,8 +47,8 @@ func TestPairing(t *testing.T) {
 	if p.Link != srv.URL+"/pair/device?user_code=ABCD-1234" || p.UserCode != "ABCD-1234" {
 		t.Fatalf("link %q code %q", p.Link, p.UserCode)
 	}
-	if strings.Join(asked, " ") != "platforms.read roms.read" {
-		t.Fatalf("should ask only for the read permissions, asked %v", asked)
+	if strings.Join(asked, " ") != "platforms.read roms.read assets.read assets.write devices.read devices.write" {
+		t.Fatalf("should ask for the library and save sync permissions only, asked %v", asked)
 	}
 	p.Interval = 5 * time.Millisecond
 	tok, err := c.WaitForPairing(context.Background(), p)

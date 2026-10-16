@@ -20,11 +20,11 @@ shell colour. One `SlotDrop.exe`, nothing to install.
 > patched dependencies, a security review before release) and Claude did the
 > rest of the building.
 >
-> It has been tested against a **RomM 5.4** server. It does **not** sync saves
-> (yet). I just wanted something simple: instead of downloading a game,
-> unzipping it and dropping it onto the card by hand, SlotDrop does it all for
-> you, backed by [RomM](https://github.com/rommapp/romm), your powerful,
-> beautiful ROM management system.
+> It has been tested against a **RomM 5.4** server. I just wanted something
+> simple: instead of downloading a game, unzipping it and dropping it onto the
+> card by hand, SlotDrop does it all for you, backed by
+> [RomM](https://github.com/rommapp/romm), your powerful, beautiful ROM
+> management system. It can also sync your saves with RomM, both ways.
 >
 > Use it at your own risk, and keep a backup of your SD card.
 
@@ -40,6 +40,8 @@ shell colour. One `SlotDrop.exe`, nothing to install.
   `Labels\cart_shell.txt`.
 - Pick a shell colour and a Solid, Clear or Glitter finish, redraw the label
   crop, or use your own image.
+- **Sync saves** with RomM, both ways: new saves on the card go up to RomM,
+  saves made elsewhere (grout on a handheld, say) come down to the card.
 - Remove a game from the card (your saves stay) and eject the card safely.
 
 | Pick a game | Tick several and add them at once |
@@ -53,8 +55,9 @@ shell colour. One `SlotDrop.exe`, nothing to install.
 - Windows 10 or 11 (the window uses WebView2, which both already have).
 - A RomM server you can sign in to, with a password, an API token, or your
   phone (RomM 5.3 or newer).
-  An API token only needs **platforms.read** and **roms.read** (SlotDrop only
-  reads). Give it an expiry rather than *Never*; a year is plenty.
+  An API token needs **platforms.read** and **roms.read** for the library, and
+  **assets.read**, **assets.write**, **devices.read** and **devices.write** to
+  sync saves. Give it an expiry rather than *Never*; a year is plenty.
 - Labels are cut automatically from RomM’s `physical` cartridge photos. RomM doesn’t download these by default:
   turn on *physical* in its scan media settings, re-scan your library, then restart SlotDrop.
   Games without one still install, and you can pick your own label image.
@@ -76,6 +79,10 @@ shell colour. One `SlotDrop.exe`, nothing to install.
 
 4. Search at the top, then click **+** on a game. To add several, tick the
    circle on each game and press *Add N games* in the bar at the bottom.
+
+Press **Sync saves** in the top bar to sync the card's saves with RomM. If a
+save changed on both sides, or SlotDrop can't tell which copy is newer,
+nothing is written: it shows you both and you pick the one to keep.
 
 Click any game to see its cartridge. For games on the card you can pick a shell
 colour (**GBA Grey** is what new games get; Slot draws a game with no colour in
@@ -101,6 +108,22 @@ The app icon and Windows manifest live in `build/winres` and are compiled into
 `rsrc_windows_amd64.syso` with [go-winres](https://github.com/tc-hib/go-winres):
 `go-winres make --in build/winres/winres.json --arch amd64`.
 
+## Save sync
+
+- Slot keeps a game's save as `Saves\<GBA|GB|GBC>\<game>.sav`. SlotDrop syncs
+  it with RomM's **autosave** slot, the one grout and other handheld apps use,
+  for every game on the card that RomM knows. Other slots and saves you
+  uploaded by hand in RomM are left alone, and so are save states.
+- Each SD card is its own device in RomM's device list (*Slot SD card*), so
+  RomM knows what that card last synced, whichever PC syncs it. SlotDrop keeps
+  the card's device id and what it last synced in `.slotdrop\sync.json` on the
+  card.
+- Before a save on the card is replaced or removed, it's copied to
+  `%APPDATA%\SlotDrop\Save backups`, keeping the last 10 of each game.
+- Slot's clock can be wrong. A save that changed since the last sync is never
+  taken for an old one, and a card that has never synced never has its saves
+  overwritten without asking.
+
 ## Security notes
 
 - Your RomM password or token is only kept if you tick *Remember me*, and then
@@ -108,9 +131,11 @@ The app icon and Windows manifest live in `build/winres` and are compiled into
   can unlock it. It lives in `%APPDATA%\SlotDrop\settings.json`. *Sign out* in
   the RomM menu forgets it.
 - Your login is only ever sent to your RomM server and never written to a log.
-- Signing in with your phone gets a token with only the two read permissions
-  SlotDrop needs. The QR code only ever points at your own RomM address, and
-  you can remove SlotDrop from RomM's device list at any time.
+- Signing in with your phone gets a token with only the permissions SlotDrop
+  needs: reading the library, and reading and writing saves and devices for
+  save sync. The QR code only ever points at your own RomM address, and you
+  can remove SlotDrop from RomM's device list at any time. If you paired before
+  SlotDrop could sync saves, sign out and pair again to sync.
   If your server address is HTTPS, the login is never sent over plain HTTP,
   even after a redirect. Using an `http://` address shows a warning.
 - HTTPS certificates are checked against the Windows certificate store, like
@@ -134,7 +159,7 @@ and I'll get in touch.
 | `internal/sdcard` | Slot's folders and `cart_shell.txt` (reads the old `.ini` too) |
 | `internal/label` | finds the label on a cartridge photo and cuts it out |
 | `internal/match` | pairs card games with RomM games (name, then checksum) |
-| `internal/core` | ties it together: adding games, making labels |
+| `internal/core` | ties it together: adding games, making labels, syncing saves |
 | `internal/secret`, `internal/settings` | the encrypted saved login |
 | `build/winres`, `rsrc_windows_amd64.syso` | the app icon and Windows manifest |
 | `preview.go` | development only: runs the page in a browser with a fake RomM (`go run -tags preview . <card folder>`) |

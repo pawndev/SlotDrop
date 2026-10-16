@@ -29,8 +29,9 @@ import (
 // ResourcesPrefix is where RomM serves downloaded artwork.
 const ResourcesPrefix = "/assets/romm/resources/"
 
-// NeededScopes are the API token permissions SlotDrop uses: the platform
-// list, the ROM list, and downloading a ROM. It only ever reads.
+// NeededScopes are the API token permissions SlotDrop needs for the library:
+// the platform list, the ROM list, and downloading a ROM. Syncing saves
+// needs SyncScopes too.
 const NeededScopes = "platforms.read and roms.read"
 
 // Download limits, so a bad server can't fill memory.
@@ -134,6 +135,15 @@ func (p *progressReader) Read(b []byte) (int, error) {
 		p.fn(p.done, p.total)
 	}
 	return n, err
+}
+
+// authorize adds our login to req, but only if it goes to the RomM server
+// itself, never to other sites, and never over http when RomM is https.
+func (c *Client) authorize(req *http.Request) {
+	u := req.URL
+	if c.auth != "" && u.Host == c.host && (u.Scheme == "https" || !c.secure) {
+		req.Header.Set("Authorization", c.auth)
+	}
 }
 
 func (c *Client) get(raw string, timeout time.Duration, limit int64) ([]byte, error) {

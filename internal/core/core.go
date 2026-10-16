@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"slotlabelmaker/internal/label"
 	"slotlabelmaker/internal/match"
@@ -196,7 +197,8 @@ type Game struct {
 	Stem     string        `json:"stem,omitempty"` // name on the card
 	HasLabel bool          `json:"hasLabel"`
 	Shell    *sdcard.Shell `json:"shell,omitempty"`
-	Match    string        `json:"match,omitempty"` // how the card game was paired with RomM
+	Match    string        `json:"match,omitempty"`    // how the card game was paired with RomM
+	SaveTime string        `json:"saveTime,omitempty"` // when Slot last wrote the game's save on the card
 }
 
 func (c *Core) ensureMatches() {
@@ -242,6 +244,11 @@ func (c *Core) Library() []Game {
 		for _, g := range sdcard.FindGames(c.root, p) {
 			item := Game{Platform: p.Key, Title: g.Stem, File: filepath.Base(g.RomPath), Size: g.Size,
 				OnCard: true, Stem: g.Stem, HasLabel: g.HasLabel()}
+			if sp := sdcard.FindSave(c.root, p, g.Stem); sp != "" {
+				if st, err := os.Stat(sp); err == nil {
+					item.SaveTime = st.ModTime().UTC().Format(time.RFC3339)
+				}
+			}
 			if s, ok := shells[g.Stem]; ok {
 				s := s
 				item.Shell = &s

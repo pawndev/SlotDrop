@@ -64,5 +64,6 @@ const ICONS = {
   eject: `<svg viewBox="0 0 24 24"><path d="M12 5l7 8H5z"/><path d="M5 18h14"/></svg>`,
   trash: `<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>`,
   image: `<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>`,
+  sync: `<svg viewBox="0 0 24 24"><path d="M19.5 10A8 8 0 0 0 5.2 7.2M4.5 3.5v4h4"/><path d="M4.5 14a8 8 0 0 0 14.3 2.8M19.5 20.5v-4h-4"/></svg>`,
   warn: `<svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>`,
 };

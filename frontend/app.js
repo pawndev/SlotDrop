@@ -87,6 +87,7 @@ const state = {
   choosingCard: false,
   selected: new Map(), // romId -> game, ticked to add together
   cartColours: {},     // romId -> the plastic's colour in RomM's photo ("" if grey or none)
+  syncing: null,       // {done, total} while saves sync
 };
 
 // One add at a time, so two games never write the card at once.
@@ -106,6 +107,12 @@ async function boot() {
     const label = step === "download" ? `Downloading ${Math.round(frac * 100)}%` : step === "label" ? "Making label" : "Done";
     state.busy[romId] = { step: label, frac: step === "download" ? frac : 1 };
     updateBusy(romId);
+  });
+
+  rt().EventsOn("sync-progress", ({ done, total }) => {
+    if (!state.syncing) return;
+    state.syncing = { done, total };
+    paintSyncPill();
   });
 
   state.start = await api().Start();
@@ -356,6 +363,7 @@ function mainScreen() {
     icon("sd"), h("b", {}, card.path.replace(/\\$/, "")));
   const rommPill = h("button", { class: "pill", onclick: (e) => { e.stopPropagation(); togglePopover("romm"); } },
     h("span", { class: "dot" }), "RomM");
+  const syncPill = h("button", { id: "sync-pill", class: "pill", title: "Sync the card's saves with RomM, both ways", onclick: (e) => { e.stopPropagation(); syncSaves(); } });
 
   gridEl = h("div", { class: "content" });
   const root = h("div", { style: { display: "contents" } },
@@ -364,12 +372,13 @@ function mainScreen() {
       h("div", { class: "search" }, icon("search"), search, h("kbd", {}, "Ctrl K")),
       h("div", { class: "pills" }, cardPill,
         card.canEject && h("button", { class: "pill icon-only", title: "Eject the SD card", "aria-label": "Eject the SD card", onclick: (e) => eject(e.currentTarget) }, icon("eject")),
-        rommPill)),
+        syncPill, rommPill)),
     h("div", { class: "filterbar" }, chips, h("div", { class: "spacer" }), meter),
     gridEl,
     popoverEl(),
     drawerEl());
   renderGrid();
+  paintSyncPill(syncPill);
   return root;
 }
 
@@ -773,8 +782,8 @@ async function removeGame(g, btn) {
 }
 
 async function eject(btn) {
-  if (Object.keys(state.busy).length) {
-    toast("Wait for the games being added to finish, then eject.", true);
+  if (Object.keys(state.busy).length || state.syncing) {
+    toast(state.syncing ? "Wait for the saves to finish syncing, then eject." : "Wait for the games being added to finish, then eject.", true);
     return;
   }
   btn.disabled = true;
@@ -794,6 +803,107 @@ async function eject(btn) {
     btn.disabled = false;
     btn.replaceChildren(icon("eject"));
   }
+}
+
+// ---- saves ------------------------------------------------------------------------
+
+const when = (iso) => {
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d) ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
+};
+
+function paintSyncPill(pill = document.getElementById("sync-pill")) {
+  if (!pill) return;
+  const s = state.syncing;
+  pill.disabled = !!s;
+  pill.replaceChildren(...(s ? [h("span", { class: "spinner" }), s.total ? `Saves ${s.done}/${s.total}` : "Syncing saves…"] : [icon("sync"), "Sync saves"]));
+}
+
+// syncSaves sends the card's new saves to RomM and puts RomM's new ones on
+// the card. Saves both sides changed wait for you in conflictsBox.
+async function syncSaves() {
+  if (state.syncing) return;
+  state.syncing = { done: 0, total: 0 };
+  state.popover = null;
+  paintSyncPill();
+  let res, error;
+  queue = queue.then(async () => {
+    try { res = await api().SyncSaves(); } catch (e) { error = e; }
+  });
+  await queue;
+  state.syncing = null;
+  paintSyncPill();
+  if (error) toast(`Couldn't sync saves: ${errText(error)}`, true);
+  else reportSync(res);
+  await reload();
+  refreshMain();
+}
+
+function reportSync(res) {
+  const up = res.uploaded || [], down = res.downloaded || [], conflicts = res.conflicts || [], problems = res.problems || [];
+  const done = [];
+  if (up.length) done.push(`sent ${plural(up.length, "save")} to RomM`);
+  if (down.length) done.push(`put ${plural(down.length, "save")} from RomM on the card`);
+  if (done.length) toast(done.join(" and ").replace(/^./, (c) => c.toUpperCase()) + ".");
+  else if (!conflicts.length && !problems.length) toast("Your saves are already in sync.");
+  if (problems.length) toast(`Couldn't sync ${problems.length}: ${problems.join("; ")}`, true);
+  if (conflicts.length) conflictsBox(conflicts);
+}
+
+// conflictsBox asks, for each save SlotDrop wouldn't sync by itself, which
+// copy to keep. Nothing is written until you pick.
+function conflictsBox(conflicts) {
+  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKey, true); reload().then(refreshMain); };
+  const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  let left = conflicts.length;
+  const later = h("button", { class: "btn ghost", onclick: close }, "Decide later");
+  const rows = conflicts.map((c) => {
+    const row = h("div", { class: "conflict" });
+    const choose = async (keep, btn) => {
+      row.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      btn.replaceChildren(h("span", { class: "spinner" }), "Saving…");
+      let error;
+      queue = queue.then(async () => {
+        try { await api().ResolveSave(c.platform, c.stem, c.romId, c.saveId, keep); } catch (e) { error = e; }
+      });
+      await queue;
+      if (error) {
+        toast(`${c.title}: ${errText(error)}`, true);
+        paint();
+        return;
+      }
+      row.replaceChildren(h("div", { class: "conflict-head" }, platformIcon(c.platform), h("b", {}, c.title)),
+        h("div", { class: "conflict-done" }, icon("check"),
+          keep === "card" ? "Kept the card's save, and sent it to RomM." : c.deleted ? "Took the save off the card." : "Put RomM's save on the card."));
+      if (--left === 0) later.replaceChildren("Done");
+    };
+    const cardNewer = c.cardTime && c.rommTime && new Date(c.cardTime) > new Date(c.rommTime);
+    const side = (name, time, extra, newer, keep, label) => h("div", { class: "side" },
+      h("div", { class: "side-name" }, name, newer && h("span", { class: "tag" }, "newer")),
+      h("div", { class: "muted" }, time || "\u00a0"),
+      h("div", { class: "faint" }, extra || "\u00a0"),
+      h("button", { class: "btn small", onclick: (e) => choose(keep, e.currentTarget) }, label));
+    const paint = () => row.replaceChildren(
+      h("div", { class: "conflict-head" }, platformIcon(c.platform), h("b", {}, c.title)),
+      h("div", { class: "faint conflict-why" }, c.reason),
+      h("div", { class: "sides" },
+        side("On the card", when(c.cardTime), mb(c.cardSize), cardNewer, "card", c.deleted ? "Send it to RomM again" : "Keep the card's"),
+        c.deleted
+          ? side("In RomM", "Deleted", "", false, "romm", "Take it off the card")
+          : side("In RomM", when(c.rommTime), "", !cardNewer && !!c.rommTime, "romm", "Keep RomM's")));
+    paint();
+    return row;
+  });
+  const overlay = h("div", { class: "modal-scrim", onclick: (e) => { if (e.target === overlay) close(); } },
+    h("div", { class: "modal wide", role: "dialog", "aria-label": "Saves to check" },
+      h("h3", {}, conflicts.length === 1 ? "One save needs you" : `${conflicts.length} saves need you`),
+      h("p", {}, "These changed on the card and in RomM, or SlotDrop can't tell which is newer. Pick the one to keep. Slot's clock can be wrong, so go by where you last played."),
+      h("div", { class: "conflicts" }, rows),
+      h("div", { class: "note" }, icon("lock"), h("span", {}, "The card's save is copied to your PC before it's replaced. ",
+        h("a", { href: "#", onclick: (e) => { e.preventDefault(); api().OpenSaveBackups().catch((x) => toast(errText(x), true)); } }, "Open the backups folder"))),
+      h("div", { class: "row", style: { justifyContent: "flex-end", marginTop: "14px" } }, later)));
+  document.body.append(overlay);
+  document.addEventListener("keydown", onKey, true);
 }
 
 // Re-render the main screen but keep the search box focused.
@@ -837,6 +947,7 @@ function popoverEl() {
       h("h4", {}, "RomM"),
       h("p", {}, state.connection.url + (state.connection.secure ? "" : "  (not https)")),
       h("button", { class: "btn", onclick: async (e) => { e.target.disabled = true; await reload(); state.popover = null; refreshMain(); toast("Library refreshed."); } }, "Refresh library"),
+      h("button", { class: "btn", disabled: !!state.syncing, onclick: () => syncSaves() }, icon("sync"), "Sync saves"),
       h("button", { class: "btn ghost", onclick: async () => {
         await api().SignOut();
         Object.assign(state, { connected: false, popover: null, games: [], drawer: null });
@@ -923,6 +1034,7 @@ function drawerEl() {
       g.size ? [h("dt", {}, "Size"), h("dd", {}, mb(g.size))] : null,
       g.regions && g.regions.length ? [h("dt", {}, "Region"), h("dd", {}, g.regions.join(", "))] : null,
       g.onCard ? [h("dt", {}, "In RomM"), h("dd", {}, g.romId ? (g.match === "checksum" ? "found by checksum" : "yes") : "not found")] : null,
+      g.onCard ? [h("dt", {}, "Save"), h("dd", {}, g.saveTime ? when(g.saveTime) + (g.romId ? "" : " · not synced, RomM doesn't know this game") : "none on the card yet")] : null,
       g.romId && !g.hasCart ? [h("dt", {}, "Label"), h("dd", {}, "RomM has no cartridge photo for this game")] : null));
   body.push(details);
   if (g.onCard) {

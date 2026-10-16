@@ -51,7 +51,10 @@ func makeCard(t *testing.T) string {
 	return root
 }
 
-func fakeRomM(t *testing.T) *httptest.Server {
+func fakeRomM(t *testing.T) *httptest.Server { return httptest.NewServer(fakeRomMMux(t)) }
+
+// fakeRomMMux is the fake RomM's library, for tests to add more to.
+func fakeRomMMux(t *testing.T) *http.ServeMux {
 	cart, _ := fakeCart()
 	var zipped bytes.Buffer
 	zw := zip.NewWriter(&zipped)
@@ -85,7 +88,7 @@ func fakeRomM(t *testing.T) *httptest.Server {
 	}))
 	mux.HandleFunc("/assets/romm/resources/", auth(func(w http.ResponseWriter, r *http.Request) { w.Write(cart) }))
 	mux.HandleFunc("/api/roms/2/content/", auth(func(w http.ResponseWriter, r *http.Request) { w.Write(zipped.Bytes()) }))
-	return httptest.NewServer(mux)
+	return mux
 }
 
 func TestWrongLogin(t *testing.T) {

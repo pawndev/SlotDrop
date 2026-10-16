@@ -376,6 +376,23 @@ body.selecting #toasts { bottom: 88px; }
 .modal h3 { margin: 0 0 8px; font: 600 17px var(--font-display); }
 .modal p { margin: 0 0 18px; color: var(--text-2); font-size: 13.5px; }
 
+.modal.wide { width: min(580px, 94vw); max-height: 88vh; display: flex; flex-direction: column; }
+
+/* ---- save conflicts ---- */
+.conflicts { overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; min-height: 0; }
+.conflict { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.conflict-head { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.conflict-head .platform-icon { width: 26px; flex: none; }
+.conflict-why { font-size: 12.5px; margin: 4px 0 10px; }
+.conflict-done { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--text-2); }
+.conflict-done .icon { color: var(--good); width: 16px; height: 16px; }
+.sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.side { background: var(--panel-2); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.side-name { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.side .tag { font-size: 11px; font-weight: 600; color: var(--good); border: 1px solid currentColor; border-radius: 6px; padding: 0 5px; }
+.side .btn { margin-top: 8px; align-self: flex-start; }
+.note a { color: var(--accent); }
+
 /* ---- toasts ---- */
 #toasts { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; z-index: 10; pointer-events: none; }
 .toast {

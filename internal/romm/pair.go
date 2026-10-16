@@ -26,8 +26,10 @@ type Pairing struct {
 	Expires    time.Time
 }
 
-// PairingScopes are the permissions SlotDrop asks for when pairing.
-var PairingScopes = []string{"platforms.read", "roms.read"}
+// PairingScopes are the permissions SlotDrop asks for when pairing: reading
+// the library, plus reading and writing saves and the card's device entry,
+// for syncing saves.
+var PairingScopes = []string{"platforms.read", "roms.read", "assets.read", "assets.write", "devices.read", "devices.write"}
 
 // ErrPairingCancelled is returned by WaitForPairing when ctx is cancelled.
 var ErrPairingCancelled = errors.New("pairing cancelled")

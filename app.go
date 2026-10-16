@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -390,6 +391,38 @@ func (a *App) SetShell(stem string, shell sdcard.Shell) error {
 // RemoveGame deletes a game and its label from the card (saves are kept).
 func (a *App) RemoveGame(platform, stem, file string) error {
 	return friendly(a.core.RemoveGame(platform, stem, file))
+}
+
+// SyncSaves syncs the card's saves with RomM, both ways. Progress is sent to
+// the page as "sync-progress" events.
+func (a *App) SyncSaves() (*core.SyncResult, error) {
+	res, err := a.core.SyncSaves(func(done, total int) {
+		runtime.EventsEmit(a.ctx, "sync-progress", map[string]int{"done": done, "total": total})
+	})
+	return res, friendly(err)
+}
+
+// ResolveSave settles a save conflict by keeping the "card" or "romm" copy.
+func (a *App) ResolveSave(platform, stem string, romID, saveID int, keep string) error {
+	return friendly(a.core.ResolveSave(platform, stem, romID, saveID, keep))
+}
+
+// OpenSaveBackups shows the folder where card saves are copied before
+// they're replaced.
+func (a *App) OpenSaveBackups() error {
+	dir, err := core.SaveBackupDir()
+	if err != nil {
+		return friendly(err)
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return friendly(err)
+	}
+	path := filepath.ToSlash(dir)
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path // file:///C:/Users/...
+	}
+	runtime.BrowserOpenURL(a.ctx, (&url.URL{Scheme: "file", Path: path}).String())
+	return nil
 }
 
 // Eject safely ejects the SD card.

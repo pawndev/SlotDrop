@@ -210,6 +210,10 @@ func main() {
 			out = err == nil
 		case "BrowseForCard":
 			out = ""
+		case "SyncSaves": // no window to send progress events to
+			out, err = app.core.SyncSaves(func(int, int) {})
+		case "OpenSaveBackups":
+			out = nil
 		default:
 			m := reflect.ValueOf(app).MethodByName(name)
 			in := []reflect.Value{}
